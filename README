@@ -1,0 +1,11 @@
+Hint is a hyperinterval finder.
+
+It takes a numerical database, samples it and using compression techniques determines an interesting hyperinterval (multi-dimensional interval).
+
+The data is fitted to the following interval form:
+  [-A-)[-B-](-A-]
+where a codelength based on a uniform density on A and B is calculated.
+
+The choice of the splits as model parameters is taken with a uniform prior, which means its cost can be discarded without loss of generality.
+This is untrue for comparison to the single uniform density coding [-A-].
+Think of the middle interval [-B-] as a luckiness region.
