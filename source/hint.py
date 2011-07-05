@@ -12,20 +12,21 @@ from operator import itemgetter
 import argparse
 import random
 
-parser = argparse.ArgumentParser( description = 'Hyperinterval finder.' )
+parser = argparse.ArgumentParser( description = "Hyperinterval finder." )
 parser.add_argument( '-s', '--sample', metavar = 'SIZE', type = int,
-                     required = True, help = 'sample size to determine initial interval boundaries' )
-parser.add_argument( 'database', type = open, help = 'database file containing one line per entry' )
+                     required = True, help = "sample size to determine hyperinterval boundaries" )
+parser.add_argument( 'database', type = open, help = "database file containing one line per entry" )
 parser.add_argument( '-p', '--perseverance', type = int, default = 0,
-                     help = 'eagerness to not end up in local minima' )
+                     help = "eagerness to not end up in local minima" )
 parser.add_argument( '-l', '--log', metavar = 'FILE',
                      type = argparse.FileType( 'w' ), required = False,
-                     help = 'log file to record all considered hyperintervals' )
+                     help = "log file to record all considered hyperintervals" )
 args = parser.parse_args()
 
-#db = range( 0, 10000, 10 )
-#db = tuple( random.gauss( 0, 1 ) for i in range( 10000 ) )
-db = tuple( float( row ) for row in args.database )
+#db = tuple( ( x, ) for x in range( 0, 10000, 10 ) )
+#db = tuple( ( random.gauss( 0, 1 ), ) for i in range( 10000 ) )
+db = tuple( tuple( float( col ) for col in row.split() )
+            for row in args.database )
 sample = random.sample( db, args.sample )
 debug = args.log
 
@@ -34,20 +35,20 @@ debug = args.log
 
 def distance( a, b ):
   """The distance between two database records."""
-  # Very one dimensional...
-  return abs( a - b )
+  # TODO: Very one dimensional...
+  return abs( a[0] - b[0] )
 
 
 def volume( a, b ):
   """The hypervolume of the hypercube between two database records."""
-  # Also very one dimensional...
+  # TODO: Also very one dimensional...
   return distance( a, b )
 
 
 def hint_init():
   """The hyperinterval is initialized as the region between the two sampled
      points that are closest together."""
-  # In the one dimensional case sorting is possible (and handy).
+  # TODO: Sorting is handy, but only works in the one dimensional case...
   sample.sort()
   deltas = [ distance( a, b ) for a, b in zip( sample[1:], sample[:-1] ) ]
   index, size = min( enumerate( deltas ), key = itemgetter( 1 ) )
@@ -59,6 +60,7 @@ def covered( hint, sample = None ):
      This is a candidate for optimization (i.e. make it incremental)."""
   count = 0
   for row in ( sample or db ):
+    # TODO: Also one dimensional...
     if hint[0] <= row <= hint[1]:
       count += 1
   return count
@@ -75,21 +77,23 @@ def comp_hint_comp( hint ):
     outside_count * log( ( size - hint_size ) / outside_count ) \
     + inside_count * log( hint_size / inside_count )
   if( debug ):
-    debug.write( "{}\t{}\t{}\t{}\t{}\n".format( hint[0], hint[1], hint_size,
-                 inside_count / len( db ), complexity ) )
+    debug.write( "{}\t{}\t{}\t{}\t{}\n".format( hint[0][0], hint[1][0],
+                                                hint_size,
+                                                inside_count / len( db ),
+                                                complexity ) )
   return complexity
 
 
-# TODO: one dimensional thinking over here
+# TODO: one dimensional thinking over here (min/max)
 size = volume( min( db ), max( db ) )
 print( "Single uniform complexity:                   ",
        len( db ) * log( size ) )
 # Taking into account model selection cost
-## Discretization is completely ignored.
-## Partly this can be justified (log(dx) is model independent).
-## The cost of specifying the luckiness region is also ignored.
-## This can hardly be justified.
-## For now: just add a constant C for all this ;-).
+"""Discretization is completely ignored.
+   Partly this can be justified (log(dx) is model independent).
+   The cost of specifying the luckiness region is also ignored.
+   This can hardly be justified.
+   For now: just add a constant C for all this ;-)."""
 print( "Comparative single uniform sample complexity:",
        len( sample ) * log( size / len( sample ) ) )
 print( "Comparative single uniform complexity:       ",
@@ -98,12 +102,12 @@ print( "Comparative single uniform complexity:       ",
 hint, hint_size = hint_init()
 if( debug ):
   debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
-print( "initial hint:", hint, "size:", hint_size )
+print( "Initial hyperinterval:    ", hint )
+print( "Size of the hyperinterval:", hint_size )
 
-
-# Next: grow(/shrink?) the hint.
-
+# Next: grow the hint.
 # BUG: the hint could potentially cover the entire database (out of the model)!
+
 ## Quick hack-up, using that the sample is sorted
 ##for ub in sample[1:]:
 #for ub in sample[sample.index( hint[1] ):]:
@@ -131,7 +135,6 @@ while( sample_out ):
   else:
     perseverance -= 1
     if( perseverance < 0 ): break
-  print(perseverance)
 else:
-  print( 'Sample exhausted. Try a larger sample.' )
-print( hint )
+  print( "Sample exhausted. Try a larger sample, or lower your perseverance." )
+print( "Most informative hyperinterval:", hint )
