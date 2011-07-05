@@ -6,8 +6,9 @@ Finds hyperintervals in a (numerical) database that have high density.
 (c) 2011 Jouke Witteveen
 """
 
-# Units are nats
+# Units are nats when using natural logarithms
 from math import log
+from operator import itemgetter
 import argparse
 import random
 
@@ -15,44 +16,72 @@ parser = argparse.ArgumentParser( description = 'Hyperinterval finder.' )
 parser.add_argument( '-s', '--sample', metavar = 'SIZE', type = int,
                      required = True, help = 'sample size to determine initial interval boundaries' )
 parser.add_argument( 'database', type = open, help = 'database file containing one line per entry' )
+parser.add_argument( '-p', '--perseverance', type = int, default = 0,
+                     help = 'eagerness to not end up in local minima' )
+parser.add_argument( '-l', '--log', metavar = 'FILE',
+                     type = argparse.FileType( 'w' ), required = False,
+                     help = 'log file to record all considered hyperintervals' )
 args = parser.parse_args()
 
-# In this form the database is one dimensional.
-db = tuple( float( row ) for row in args.database.readlines() )
+#db = range( 0, 10000, 10 )
+#db = tuple( random.gauss( 0, 1 ) for i in range( 10000 ) )
+db = tuple( float( row ) for row in args.database )
 sample = random.sample( db, args.sample )
+debug = args.log
 
 
-"""The distance between two database records is use case dependent.
-   Write your own distance function!"""
+### DATABASE DEPENDENT FUNCTIONS ###
+
 def distance( a, b ):
+  """The distance between two database records."""
   # Very one dimensional...
   return abs( a - b )
 
 
-"""The hyperinterval is initialized as the region between the two sampled
-   points that are closest together."""
+def volume( a, b ):
+  """The hypervolume of the hypercube between two database records."""
+  # Also very one dimensional...
+  return distance( a, b )
+
+
 def hint_init():
+  """The hyperinterval is initialized as the region between the two sampled
+     points that are closest together."""
   # In the one dimensional case sorting is possible (and handy).
   sample.sort()
-  deltas = [ a - b for a, b in zip( sample[1:], sample[:-1] ) ]
-  size = min( deltas )
-  return sample[deltas.index( size ):][:2], size
+  deltas = [ distance( a, b ) for a, b in zip( sample[1:], sample[:-1] ) ]
+  index, size = min( enumerate( deltas ), key = itemgetter( 1 ) )
+  return tuple( sample[index:index + 2] ), size
 
 
-"""The number of records covered by the hyperinterval.
-   This is a candidate for optimization (i.e. make it incremental)"""
-def covered( hint ):
+def covered( hint, sample = None ):
+  """The number of records covered by the hyperinterval.
+     This is a candidate for optimization (i.e. make it incremental)."""
   count = 0
-  for record in db:
-    if hint[0] <= record <= hint[1]:
+  for row in ( sample or db ):
+    if hint[0] <= row <= hint[1]:
       count += 1
   return count
 
 
-# TODO: very 1D thinking over here
-lower = min( db )
-upper = max( db )
-size = distance( lower, upper )
+### INVARIABLE MACHINERY ###
+
+def comp_hint_comp( hint ):
+  """Comparative hint complexity calculation."""
+  inside_count = covered( hint )
+  outside_count = len( db ) - inside_count
+  hint_size = volume( hint[0], hint[1] )
+  complexity = \
+    outside_count * log( ( size - hint_size ) / outside_count ) \
+    + inside_count * log( hint_size / inside_count )
+  if( debug ):
+    debug.write( "{}\t{}\t{}\t{}\t{}\n".format( hint[0], hint[1], hint_size,
+                 inside_count / len( db ), complexity ) )
+  return complexity
+
+
+# TODO: one dimensional thinking over here
+size = volume( min( db ), max( db ) )
 print( "Single uniform complexity:                   ",
        len( db ) * log( size ) )
 # Taking into account model selection cost
@@ -67,13 +96,42 @@ print( "Comparative single uniform complexity:       ",
        len( db ) * log( size / len( db ) ) )
 
 hint, hint_size = hint_init()
-print( "Comparative hint sample complexity:          ",
-       ( len( sample ) - 2 ) * log( ( size - hint_size ) / len( sample ) )
-       + 2 * log( hint_size / 2 ) )
-inside_count = covered( hint )
-print( "Comparative hint complexity:                 ",
-       ( len( db ) - inside_count ) * log( ( size - hint_size ) / len( db ) )
-       + inside_count * log( hint_size / inside_count ) )
+if( debug ):
+  debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
+print( "initial hint:", hint, "size:", hint_size )
+
 
 # Next: grow(/shrink?) the hint.
 
+# BUG: the hint could potentially cover the entire database (out of the model)!
+## Quick hack-up, using that the sample is sorted
+##for ub in sample[1:]:
+#for ub in sample[sample.index( hint[1] ):]:
+#  #for lb in reversed( sample[:sample.index( ub )] ):
+#  for lb in reversed( sample[:sample.index( hint[0] ) + 1] ):
+#    complexity = comp_hint_comp( [lb, ub] )
+#  if( debug ): debug.write( "\n\n" )
+
+# More decent attempt to do the above
+complexity = comp_hint_comp( hint )
+sample_out = [ row for row in sample if row < hint[0] or row > hint[1] ]
+perseverance = args.perseverance
+while( sample_out ):
+  candidate = sample_out.pop(
+    min( enumerate( distance( row, hint[0] ) + distance( row, hint[1] )
+                    for row in sample_out ), key = itemgetter( 1 ) )[0] )
+  if( candidate < hint[0] ):
+    hint_candidate = candidate, hint[1]
+  else:
+    hint_candidate = hint[0], candidate
+  complexity_candidate = comp_hint_comp( hint_candidate )
+  if( complexity_candidate < complexity ):
+    complexity, hint = complexity_candidate, hint_candidate
+    perseverance = args.perseverance
+  else:
+    perseverance -= 1
+    if( perseverance < 0 ): break
+  print(perseverance)
+else:
+  print( 'Sample exhausted. Try a larger sample.' )
+print( hint )
