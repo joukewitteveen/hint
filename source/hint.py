@@ -28,8 +28,6 @@ parser.add_argument( '-l', '--log', metavar = 'FILE',
                      help = "log file to record all considered hyperintervals" )
 args = parser.parse_args()
 
-#db = tuple( ( x, ) for x in range( 0, 10000, 10 ) )
-#db = tuple( ( random.gauss( 0, 1 ), ) for i in range( 10000 ) )
 db = tuple( tuple( float( col ) for col in row.split() )
             for row in args.database )
 if not ( 3 <= args.sample <= len( db ) ):
@@ -138,15 +136,6 @@ print( "Initial hyperinterval:         ", hint )
 # BUG: The boundaries are often found in low density regions. The sample is not
 #      the most accurate source of coordinates in those situations.
 
-## Quick hack-up, using that the sample is sorted
-##for ub in sample[1:]:
-#for ub in sample[sample.index( hint[1] ):]:
-#  #for lb in reversed( sample[:sample.index( ub )] ):
-#  for lb in reversed( sample[:sample.index( hint[0] ) + 1] ):
-#    complexity = comp_hint_comp( [lb, ub] )
-#  if debug: debug.write( "\n\n" )
-
-# More decent attempt to do the above
 complexity = comp_hint_comp( hint )
 sample_out = [ row for row in sample if row < hint[0] or row > hint[1] ]
 perseverance = args.perseverance
