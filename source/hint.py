@@ -58,17 +58,21 @@ def measure_init( db ):
 
 def distance( a, b ):
   """The distance between two database records."""
-  # Euclidean distance without the square root
-  return sum( map( lambda x, y, z: ( ( x - y ) / z ) ** 2, a, b, db_scale ) )
+  # A rectilinear distance suits the model
+  return sum( map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ) )
 
 
 def volume( a, b ):
   """The volume of the hypercube between two database records.
 
+     Subspaces are given a 'thickness' of epsilon, except for the point
+     subspace, which is given volume 0.
      The volume of the bounding box around the database is normalized to 1."""
+  if a == b: return 0
+  epsilon = .000001
   V = 1
-  for factor in map( lambda x, y, z: abs( x - y ) / z, a, b, db_scale ):
-    V *= factor
+  for side in map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ):
+    V *= ( side or epsilon )
   return V
 
 
@@ -118,8 +122,8 @@ print( "Single uniform complexity:                   ",
    This can hardly be justified.
    For now: just add a constant C for all this ;-)."""
 # Taking into account model selection cost
-print( "Comparative single uniform sample complexity:",
-       len( sample ) * log( size / len( sample ) ) )
+#print( "Comparative single uniform sample complexity:",
+#       len( sample ) * log( size / len( sample ) ) )
 print( "Comparative single uniform complexity:       ",
        len( db ) * log( size / len( db ) ) )
 
@@ -132,7 +136,7 @@ print( "Initial hyperinterval:         ", hint )
 # Next: grow the hint.
 # BUG: The hint could potentially cover the entire database (out of the model)!
 # BUG: The boundaries are often found in low density regions. The sample is not
-#      be the most accurate source of coordinates in those situations.
+#      the most accurate source of coordinates in those situations.
 
 ## Quick hack-up, using that the sample is sorted
 ##for ub in sample[1:]:
