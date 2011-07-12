@@ -1,0 +1,6 @@
+Two plot scripts wrap around the hint program.
+
+Suggested usage:
+
+source/plot3.py -s SIZE [-p PERSEVERANCE] [-l FILE] test/WorldClim/worldclim51+ < test/WorldClim/worldclim1_2
+source/plot2.py

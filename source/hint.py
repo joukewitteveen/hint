@@ -8,6 +8,7 @@ Finds hyperintervals in a (numerical) database that have high density.
 
 # Units are nats when using natural logarithms
 from math import log
+from sys import float_info
 import argparse
 import operator
 import random
@@ -28,8 +29,7 @@ parser.add_argument( '-l', '--log', metavar = 'FILE',
                      help = "log file to record all considered hyperintervals" )
 args = parser.parse_args()
 
-db = tuple( tuple( float( col ) for col in row.split() )
-            for row in args.database )
+db = tuple( tuple( map( float, row.split() ) ) for row in args.database )
 if not ( 3 <= args.sample <= len( db ) ):
   print( "sample size should be between 3 and the number of records in the database" )
   raise SystemExit
@@ -60,32 +60,29 @@ def distance( a, b ):
   return sum( map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ) )
 
 
-def volume( a, b ):
+def volume( a, b, epsilon = float_info.epsilon**( 1 / len( db[0] ) ) ):
   """The volume of the hypercube between two database records.
 
      Subspaces are given a 'thickness' of epsilon, except for the point
      subspace, which is given volume 0.
      The volume of the bounding box around the database is normalized to 1."""
   if a == b: return 0
-  epsilon = .000001
   V = 1
   for side in map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ):
     V *= ( side or epsilon )
-  return V
+  return V or float_info.min
 
 
 def hint_init( sample ):
   """The hyperinterval is initialized as the region between the two sampled
      points that are closest together."""
-  return min( ( distance( a, b ), ( a, b ) )
-              for a in sample for b in sample if a != b )[1]
+  # This is deterministic.
+  return bounding_hint( *min( ( distance( a, b ), ( a, b ) )
+                              for a in sample for b in sample if a != b )[1] )
 
 
 def covered( hint, sample = None ):
-  """The number of records covered by the hyperinterval.
-
-     This is a candidate for optimization.
-     The hint only grows so it should be possible to make it incremental."""
+  """The number of records covered by the hyperinterval."""
   count = 0
   for row in ( sample or db ):
     for i, x in enumerate( row ):
@@ -95,6 +92,10 @@ def covered( hint, sample = None ):
 
 
 ### INVARIABLE MACHINERY ###
+
+def bounding_hint( *a ):
+  return tuple( map( min, *a ) ), tuple( map( max, *a ) )
+
 
 def comp_hint_comp( hint ):
   """Comparative hint complexity calculation."""
@@ -112,6 +113,7 @@ def comp_hint_comp( hint ):
 
 
 size = volume( *measure_init( db ) )
+# If the volume is normalized to 1, the following prints 0. This is not a bug.
 print( "Single uniform complexity:                   ",
        len( db ) * log( size ) )
 """Discretization is completely ignored.
