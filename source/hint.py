@@ -10,9 +10,7 @@ Finds hyperintervals in a (numerical) database that have high density.
 from math import log
 from sys import float_info
 import argparse
-import operator
 import random
-itemgetter = operator.itemgetter
 
 
 ### ARGUMENT PARSING AND VALIDATION ###
@@ -42,15 +40,16 @@ debug = args.log
 
 ### DATABASE DEPENDENT FUNCTIONS ###
 
-def measure_init( db ):
+def measure_init( db, sample ):
   """Establish a bounding box around the database and normalizing factors for
      all columns, so that distances become comparable."""
   global db_scale
-  db_lb = tuple( min( db, key = itemgetter( i ) )[i]
-                 for i in range( len( db[0] ) ) )
-  db_ub = tuple( max( db, key = itemgetter( i ) )[i]
-                 for i in range( len( db[0] ) ) )
+  db_lb, db_ub = bounding_hint( *db )
   db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
+  # Runtime is quadratic in the sample size. That is slow.
+  hint_init.candidates = sorted( [ ( a, b )
+                                   for a in sample for b in sample if a != b ],
+                                 key = lambda ab: distance( *ab ) )
   return db_lb, db_ub
 
 
@@ -70,31 +69,49 @@ def volume( a, b, epsilon = float_info.epsilon**( 1 / len( db[0] ) ) ):
   V = 1
   for side in map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ):
     V *= ( side or epsilon )
-  return V or float_info.min
+  return max( V, float_info.min )
 
 
-def hint_init( sample ):
+def hint_init( sample, *excluded ):
   """The hyperinterval is initialized as the region between the two sampled
-     points that are closest together."""
-  # This is deterministic.
-  return bounding_hint( *min( ( distance( a, b ), ( a, b ) )
-                              for a in sample for b in sample if a != b )[1] )
+     points that are closest together.
+
+     Points in excluded intervals are not considered."""
+  global hint_origin
+  hint_init.candidates = [ ( x, y ) for x, y in hint_init.candidates
+                           if not is_covered( x, *excluded ) and
+                              not is_covered( y, *excluded ) ]
+  if len( hint_init.candidates ) == 0:
+    print( "Sample exhausted." )
+    raise SystemExit
+  hint_origin = tuple( map( lambda x, y: ( x + y ) / 2,
+                            *hint_init.candidates[0] ) )
+  return bounding_hint( *hint_init.candidates[0] )
+
+
+### INVARIABLE MACHINERY ###
+
+def bounding_hint( *a ):
+  """The smallest hyperinterval covering all arguments."""
+  return tuple( map( min, *a ) ), tuple( map( max, *a ) )
+
+
+def is_covered( a, *hints ):
+  """Checks whether a database record is covered by any of the hyperintervals
+     provided."""
+  for hint in hints:
+    for i, x in enumerate( a ):
+      if not ( hint[0][i] <= x <= hint[1][i] ): break
+    else: return True
+  return False
 
 
 def covered( hint, sample = None ):
   """The number of records covered by the hyperinterval."""
   count = 0
   for row in ( sample or db ):
-    for i, x in enumerate( row ):
-      if not ( hint[0][i] <= x <= hint[1][i] ): break
-    else: count += 1
+    if is_covered( row, hint ): count += 1
   return count
-
-
-### INVARIABLE MACHINERY ###
-
-def bounding_hint( *a ):
-  return tuple( map( min, *a ) ), tuple( map( max, *a ) )
 
 
 def comp_hint_comp( hint ):
@@ -112,48 +129,67 @@ def comp_hint_comp( hint ):
   return complexity
 
 
-size = volume( *measure_init( db ) )
-# If the volume is normalized to 1, the following prints 0. This is not a bug.
-print( "Single uniform complexity:                   ",
-       len( db ) * log( size ) )
-"""Discretization is completely ignored.
-   Partly this can be justified (log(dx) is model independent).
-   The cost of specifying the luckiness region is also ignored.
-   This can hardly be justified.
-   For now: just add a constant C for all this ;-)."""
-# Taking into account model selection cost
-#print( "Comparative single uniform sample complexity:",
-#       len( sample ) * log( size / len( sample ) ) )
-print( "Comparative single uniform complexity:       ",
-       len( db ) * log( size / len( db ) ) )
-
-hint = hint_init( sample )
-hint_origin = tuple( map( lambda x, y: ( x + y ) / 2, *hint ) )
-if debug:
-  debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
-print( "Initial hyperinterval:         ", hint )
-
-# Next: grow the hint.
 # BUG: The hint could potentially cover the entire database (out of the model)!
 # BUG: The boundaries are often found in low density regions. The sample is not
 #      the most accurate source of coordinates in those situations.
-
-complexity = comp_hint_comp( hint )
-sample_out = [ row for row in sample if row < hint[0] or row > hint[1] ]
-perseverance = args.perseverance
-while sample_out:
-  candidate = sample_out.pop(
-    min( enumerate( distance( row, hint[0] ) + distance( row, hint[1] )
-                    for row in sample_out ), key = itemgetter( 1 ) )[0] )
-  hint_candidate = tuple( map( min, candidate, hint[0] ) ), \
-                   tuple( map( max, candidate, hint[1] ) )
-  complexity_candidate = comp_hint_comp( hint_candidate )
-  if complexity_candidate < complexity:
-    complexity, hint = complexity_candidate, hint_candidate
-    perseverance = args.perseverance
+def grow_hint( hint, sample ):
+  """Grow the hyperinterval to its maximal informativeness."""
+  complexity = comp_hint_comp( hint )
+  sample_out = [ row for row in sample if not is_covered( row ) ]
+  perseverance = args.perseverance
+  while sample_out:
+    candidate = sample_out.pop(
+      min( enumerate( distance( row, hint[0] ) + distance( row, hint[1] )
+                      for row in sample_out ), key = lambda a: a[1] )[0] )
+    hint_candidate = tuple( map( min, candidate, hint[0] ) ), \
+                     tuple( map( max, candidate, hint[1] ) )
+    complexity_candidate = comp_hint_comp( hint_candidate )
+    if complexity_candidate < complexity:
+      complexity, hint = complexity_candidate, hint_candidate
+      perseverance = args.perseverance
+    else:
+      perseverance -= 1
+      if perseverance < 0: break
   else:
-    perseverance -= 1
-    if perseverance < 0: break
-else:
-  print( "Sample exhausted. Try a larger sample, or lower your perseverance." )
-print( "Most informative hyperinterval:", hint )
+    print( "Sample exhausted. "
+           "Try a larger sample, or lower your perseverance." )
+  return hint
+
+
+size = volume( *measure_init( db, sample ) )
+if __name__ == "__main__":
+  # If the volume is normalized to 1, the following prints 0.
+  # This is not a bug.
+  print( "Single uniform complexity:                   ",
+         len( db ) * log( size ) )
+  """Discretization is completely ignored.
+     Partly this can be justified (log(dx) is model independent).
+     The cost of specifying the luckiness region is also ignored.
+     This can hardly be justified.
+     For now: just add a constant C for all this ;-)."""
+  # Taking into account model selection cost
+  #print( "Comparative single uniform sample complexity:",
+  #       len( sample ) * log( size / len( sample ) ) )
+  print( "Comparative single uniform complexity:       ",
+         len( db ) * log( size / len( db ) ) )
+
+
+def run():
+  global hint_history
+  run.iteration += 1
+  if __name__ != "__main__":
+    print( "=> RUN", run.iteration )
+  hint = hint_init( sample, *hint_history )
+  if debug:
+    if run.iteration == 1:
+      debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
+    else: debug.write( "\n\n" )
+  print( "Initial hyperinterval:         ", hint )
+  hint = grow_hint( hint, sample )
+  print( "Most informative hyperinterval:", hint )
+  hint_history.append( hint )
+run.iteration = 0
+
+
+hint_history = list()
+if __name__ == "__main__": run()

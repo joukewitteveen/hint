@@ -8,17 +8,18 @@ Seperates the database in items inside and items outside the hyperinterval.
 
 from hint import *
 
+iterations = 100
 fh = open( 'py2to3', 'w' )
-inside = []
-outside = []
+keys = []
+for _ in db: keys.append( tuple( map( float, input().split() ) ) )
 
-for row in db:
-  line = input()
-  attrib = tuple( map( float, line.split() ) )
-  for i, x in enumerate( row ):
-    if not ( hint[0][i] <= x <= hint[1][i] ):
-      outside.append( attrib )
-      break
-  else:
-    inside.append( attrib )
-fh.write( "{}\n{}\n".format( repr( inside ), repr( outside ) ) )
+for _ in range( iterations ):
+  run()
+  inside = []
+  outside = []
+  for i, row in enumerate( db ):
+    if is_covered( row, hint_history[-1] ):
+      inside.append( keys[i] )
+    else:
+      outside.append( keys[i] )
+  fh.write( "{}\n".format( repr( ( inside, outside ) ) ) )
