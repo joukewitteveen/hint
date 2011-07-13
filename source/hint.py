@@ -135,7 +135,7 @@ def comp_hint_comp( hint ):
 def grow_hint( hint, sample ):
   """Grow the hyperinterval to its maximal informativeness."""
   complexity = comp_hint_comp( hint )
-  sample_out = [ row for row in sample if not is_covered( row ) ]
+  sample_out = [ row for row in sample if not is_covered( row, hint ) ]
   perseverance = args.perseverance
   while sample_out:
     candidate = sample_out.pop(
