@@ -47,8 +47,8 @@ def measure_init( db, sample ):
   db_lb, db_ub = bounding_hint( *db )
   db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
   # Runtime is quadratic in the sample size. That is slow.
-  hint_init.candidates = sorted( [ ( a, b )
-                                   for a in sample for b in sample if a != b ],
+  hint_init.candidates = sorted( [ ( a, b ) for a in sample for b in sample
+                                                            if not a is b ],
                                  key = lambda ab: distance( *ab ) )
   return db_lb, db_ub
 
@@ -60,12 +60,13 @@ def distance( a, b ):
 
 
 def volume( a, b, epsilon = float_info.epsilon**( 1 / len( db[0] ) ) ):
-  """The volume of the hypercube between two database records.
+  """The volume of the hyperinterval between two database records.
 
-     Subspaces are given a 'thickness' of epsilon, except for the point
-     subspace, which is given volume 0.
+     Subspaces are given a 'thickness' of epsilon.
+     A record with itself yields a hyperinterval of volume 0.
+     Two identical records yield a hyperinterval of strictly positive volume.
      The volume of the bounding box around the database is normalized to 1."""
-  if a == b: return 0
+  if a is b: return 0
   V = 1
   for side in map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ):
     V *= ( side or epsilon )
