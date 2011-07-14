@@ -72,21 +72,24 @@ def volume( a, b, epsilon = float_info.epsilon**( 1 / len( db[0] ) ) ):
   return max( V, float_info.min )
 
 
-def hint_init( sample, *excluded ):
+def hint_init( sample, *exclude ):
   """The hyperinterval is initialized as the region between the two sampled
      points that are closest together.
 
      Points in excluded intervals are not considered."""
   global hint_origin
+  exclude = [ a for a in exclude if a not in hint_init.excluded ]
   hint_init.candidates = [ ( x, y ) for x, y in hint_init.candidates
-                           if not is_covered( x, *excluded ) and
-                              not is_covered( y, *excluded ) ]
+                           if not is_covered( x, *exclude ) and
+                              not is_covered( y, *exclude ) ]
+  hint_init.excluded.extend( exclude )
   if len( hint_init.candidates ) == 0:
     print( "Sample exhausted." )
     raise SystemExit
   hint_origin = tuple( map( lambda x, y: ( x + y ) / 2,
                             *hint_init.candidates[0] ) )
   return bounding_hint( *hint_init.candidates[0] )
+hint_init.excluded = list()
 
 
 ### INVARIABLE MACHINERY ###
