@@ -29,11 +29,9 @@ args = parser.parse_args()
 
 db = tuple( tuple( map( float, row.split() ) ) for row in args.database )
 if not ( 3 <= args.sample <= len( db ) ):
-  print( "sample size should be between 3 and the number of records in the database" )
-  raise SystemExit
+  parser.error( "SIZE should be between 3 and the size of the database." )
 if not ( 0 <= args.perseverance <= args.sample - 3 ):
-  print( "perseverance should be between 0 and the sample size minus three" )
-  raise SystemExit
+  parser.error( "PERSEVERANCE should be between 0 and SIZE-3." )
 sample = random.sample( db, args.sample )
 debug = args.log
 
@@ -81,12 +79,12 @@ def hint_init( sample, *exclude ):
   global hint_origin
   exclude = [ a for a in exclude if a not in hint_init.excluded ]
   hint_init.candidates = [ ( x, y ) for x, y in hint_init.candidates
-                           if not is_covered( x, *exclude ) and
-                              not is_covered( y, *exclude ) ]
+                                    if not is_covered( x, *exclude ) and
+                                       not is_covered( y, *exclude ) ]
   hint_init.excluded.extend( exclude )
   if len( hint_init.candidates ) == 0:
     print( "Sample exhausted." )
-    raise SystemExit
+    return None
   hint_origin = tuple( map( lambda x, y: ( x + y ) / 2,
                             *hint_init.candidates[0] ) )
   return bounding_hint( *hint_init.candidates[0] )
@@ -184,6 +182,7 @@ def run():
   if __name__ != "__main__":
     print( "=> RUN", run.iteration )
   hint = hint_init( sample, *hint_history )
+  if not hint: raise SystemExit
   if debug:
     if run.iteration == 1:
       debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
