@@ -6,18 +6,18 @@ Finds hyperintervals in a (numerical) database that have high density.
 (c) 2011 Jouke Witteveen
 """
 
+import argparse, random
 # Units are nats when using natural logarithms
 from math import log
 from sys import float_info
-import argparse
-import random
 
 
 ### ARGUMENT PARSING AND VALIDATION ###
 
 parser = argparse.ArgumentParser( description = "Hyperinterval finder." )
 parser.add_argument( '-s', '--sample', metavar = 'SIZE', type = int,
-                     required = True, help = "sample size to determine hyperinterval boundaries" )
+                     required = True,
+                     help = "sample size to determine hyperinterval boundaries" )
 parser.add_argument( 'database', type = argparse.FileType( 'r' ),
                      help = "database file containing one line per entry" )
 parser.add_argument( '-p', '--perseverance', type = int, default = 0,
@@ -38,6 +38,7 @@ debug = args.log
 
 ### DATABASE DEPENDENT FUNCTIONS ###
 
+# BUG: This is called directly on import, so it cannot easily be overloaded.
 def measure_init( db, sample ):
   """Establish a bounding box around the database and normalizing factors for
      all columns, so that distances become comparable."""
@@ -120,14 +121,14 @@ def comp_hint_comp( hint ):
   """Comparative hint complexity calculation."""
   inside_count = covered( hint )
   outside_count = len( db ) - inside_count
-  hint_size = volume( hint[0], hint[1] )
+  hint_volume = volume( hint[0], hint[1] )
   complexity = \
-    outside_count * log( ( size - hint_size ) / outside_count ) \
-    + inside_count * log( hint_size / inside_count )
+    outside_count * log( ( db_volume - hint_volume ) / outside_count ) \
+    + inside_count * log( hint_volume / inside_count )
   if debug:
     debug.write( "{}\t{}\t{}\t{}\t{}\n".format(
       -distance( hint[0], hint_origin ), distance( hint[1], hint_origin ),
-      hint_size, inside_count / len( db ), complexity ) )
+      hint_volume, inside_count / len( db ), complexity ) )
   return complexity
 
 
@@ -158,12 +159,12 @@ def grow_hint( hint, sample ):
   return hint
 
 
-size = volume( *measure_init( db, sample ) )
+db_volume = volume( *measure_init( db, sample ) )
 if __name__ == "__main__":
   # If the volume is normalized to 1, the following prints 0.
   # This is not a bug.
   print( "Single uniform complexity:                   ",
-         len( db ) * log( size ) )
+         len( db ) * log( db_volume ) )
   """Discretization is completely ignored.
      Partly this can be justified (log(dx) is model independent).
      The cost of specifying the luckiness region is also ignored.
@@ -171,9 +172,9 @@ if __name__ == "__main__":
      For now: just add a constant C for all this ;-)."""
   # Taking into account model selection cost
   #print( "Comparative single uniform sample complexity:",
-  #       len( sample ) * log( size / len( sample ) ) )
+  #       len( sample ) * log( db_volume / len( sample ) ) )
   print( "Comparative single uniform complexity:       ",
-         len( db ) * log( size / len( db ) ) )
+         len( db ) * log( db_volume / len( db ) ) )
 
 
 def run():
