@@ -6,19 +6,19 @@ Seperates the database in items inside and items outside the hyperinterval.
 (c) 2011 Jouke Witteveen
 """
 
-from hint import *
+import hint, hint_tools
 
 iterations = 100
 fh = open( 'py2to3', 'w' )
 keys = []
-for _ in db: keys.append( tuple( map( float, input().split() ) ) )
+for _ in hint.db: keys.append( tuple( map( float, input().split() ) ) )
 
 for _ in range( iterations ):
-  run()
+  hint.run()
   inside = []
   outside = []
-  for i, row in enumerate( db ):
-    if is_covered( row, hint_history[-1] ):
+  for i, row in enumerate( hint.db ):
+    if hint_tools.is_covered( row, hint.hint_history[-1] ):
       inside.append( keys[i] )
     else:
       outside.append( keys[i] )

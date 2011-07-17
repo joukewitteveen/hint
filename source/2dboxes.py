@@ -10,7 +10,7 @@ import hint
 
 fh = open( '2dboxes', 'w' )
 
-for _ in range( 20 ):
+for _ in range( 30 ):
   hint.run()
   xdelta, ydelta = map( lambda a, b: ( b - a ) / 2, *hint.hint_history[-1] )
   x = hint.hint_history[-1][0][0] + xdelta
