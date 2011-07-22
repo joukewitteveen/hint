@@ -12,8 +12,7 @@ from matplotlib.pyplot import savefig, clf
 fh = open( 'py2to3', 'r' )
 
 
-i = 0
-for inside, outside in map( eval, fh.readlines() ):
+for i, ( inside, outside ) in enumerate( map( eval, fh.readlines() ) ):
   lats1, lons1 = zip( *inside )
   lats0, lons0 = zip( *outside )
 
@@ -43,6 +42,7 @@ for inside, outside in map( eval, fh.readlines() ):
   #cmap=cm.cool
   m.scatter(x,y,s=7,c='r',marker="o",alpha=1)
 
-  i += 1
-  savefig('map{}'.format( i ),dpi=200)
+  filename = 'map{}'.format( i )
+  print( filename )
+  savefig(filename,dpi=200)
   clf()

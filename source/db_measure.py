@@ -16,7 +16,7 @@ def measure_init( db, sample ):
   global db_scale
   db_lb, db_ub = hint_tools.bounding_hint( *db )
   db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
-  volume.epsilon = float_info.epsilon**( 1 / len( db[0] ) )
+  volume.epsilon = float_info.epsilon**( 1 / len( db_scale ) )
   # Runtime is quadratic in the sample size. That is slow.
   hint_init.candidates = sorted( [ ( a, b ) for a in sample for b in sample
                                                             if not a is b ],
@@ -50,17 +50,14 @@ def hint_init( sample, *exclude ):
 
      Points in excluded intervals are not considered."""
   global hint_origin
-  exclude = [ a for a in exclude if a not in hint_init.excluded ]
   hint_init.candidates = [ ( x, y )
                            for x, y in hint_init.candidates
                            if not hint_tools.is_covered( x, *exclude )
                               and not hint_tools.is_covered( y, *exclude ) ]
-  hint_init.excluded.extend( exclude )
   if len( hint_init.candidates ) == 0:
     print( "Sample exhausted." )
     return None
   hint_origin = tuple( map( lambda x, y: ( x + y ) / 2,
                             *hint_init.candidates[0] ) )
   return hint_tools.bounding_hint( *hint_init.candidates[0] )
-hint_init.excluded = list()
 

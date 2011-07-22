@@ -23,15 +23,16 @@ except ImportError:
 
 parser = argparse.ArgumentParser( description = "Hyperinterval finder." )
 parser.add_argument( '-s', '--sample', metavar = 'SIZE', type = int,
-                     required = True,
-                     help = "sample size to determine hyperinterval boundaries" )
+  required = True, help = "sample size to determine hyperinterval boundaries" )
 parser.add_argument( 'database', type = argparse.FileType( 'r' ),
-                     help = "database file containing one line per entry" )
+  help = "database file containing one line per entry" )
 parser.add_argument( '-p', '--perseverance', type = int, default = 0,
-                     help = "eagerness to not end up in local minima" )
+  help = "eagerness to not end up in local minima" )
+parser.add_argument( '-t', '--thoroughness', type = int, default = 0,
+  help = "tolerated consecutive non-compressing hyperintervals" )
 parser.add_argument( '-l', '--log', metavar = 'FILE',
-                     type = argparse.FileType( 'w' ), required = False,
-                     help = "log file to record all considered hyperintervals" )
+  type = argparse.FileType( 'w' ), required = False,
+  help = "log file to record all considered hyperintervals" )
 args = parser.parse_args()
 
 db = tuple( tuple( map( float, row.split() ) ) for row in args.database )
@@ -39,6 +40,8 @@ if not ( 3 <= args.sample <= len( db ) ):
   parser.error( "SIZE should be between 3 and the size of the database." )
 if not ( 0 <= args.perseverance <= args.sample - 3 ):
   parser.error( "PERSEVERANCE should be between 0 and SIZE-3." )
+if args.thoroughness < 0:
+  parser.error( "THOROUGHNESS should not be negative." )
 sample = random.sample( db, args.sample )
 debug = args.log
 
@@ -50,9 +53,10 @@ def comp_hint_comp( hint ):
   inside_count = hint_tools.covered( hint, db )
   outside_count = len( db ) - inside_count
   hint_volume = db_measure.volume( hint[0], hint[1] )
-  complexity = \
-    outside_count * log( ( db_volume - hint_volume ) / outside_count ) \
-    + inside_count * log( hint_volume / inside_count )
+  complexity = inside_count * log( hint_volume / inside_count )
+  if outside_count != 0:
+    complexity += \
+      outside_count * log( ( db_volume - hint_volume ) / outside_count )
   if debug:
     debug.write( "{}\t{}\t{}\t{}\t{}\n".format(
       -db_measure.distance( hint[0], db_measure.hint_origin ),
@@ -61,7 +65,6 @@ def comp_hint_comp( hint ):
   return complexity
 
 
-# BUG: The hint could potentially cover the entire database (out of the model)!
 # BUG: The boundaries are often found in low density regions. The sample is not
 #      the most accurate source of coordinates in those situations.
 def grow_hint( hint, sample ):
@@ -72,9 +75,9 @@ def grow_hint( hint, sample ):
   perseverance = args.perseverance
   while sample_out:
     candidate = sample_out.pop(
-      min( enumerate( db_measure.distance( row, hint[0] )
-                      + db_measure.distance( row, hint[1] )
-                      for row in sample_out ), key = lambda a: a[1] )[0] )
+      min( range( len( sample_out ) ),
+           key = lambda i: db_measure.distance( sample_out[i], hint[0] )
+                           + db_measure.distance( sample_out[i], hint[1] ) ) )
     hint_candidate = tuple( map( min, candidate, hint[0] ) ), \
                      tuple( map( max, candidate, hint[1] ) )
     complexity_candidate = comp_hint_comp( hint_candidate )
@@ -87,47 +90,43 @@ def grow_hint( hint, sample ):
   else:
     print( "Sample exhausted. "
            "Try a larger sample, or lower your perseverance." )
-  return hint
+  return hint, complexity
 
 
 ### ENTRANCE HOOKS ###
 
-def run():
-  global hint_history
-  run.iteration += 1
-  if __name__ != "__main__":
-    print( "=> RUN", run.iteration )
-  hint = db_measure.hint_init( sample, *hint_history )
-  if not hint: raise SystemExit
-  if debug:
-    if run.iteration == 1:
-      debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
-    else: debug.write( "\n\n" )
-  print( "Initial hyperinterval:         ", hint )
-  hint = grow_hint( hint, sample )
-  print( "Most informative hyperinterval:", hint )
-  hint_history.append( hint )
-run.iteration = 0
-
-
-hint_history = list()
-db_volume = db_measure.volume( *db_measure.measure_init( db, sample ) )
+def hints():
+  global db_volume
+  db_volume = db_measure.volume( *db_measure.measure_init( db, sample ) )
+  if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
+  db_comp_comp = len( db ) * log( db_volume / len( db ) ) \
+                 - ( 2 * log( len( db ) ) - log( 2 ) )
+  hint = db_measure.hint_init( sample )
+  thoroughness = args.thoroughness
+  while hint:
+    hint, complexity = grow_hint( hint, sample )
+    if debug: debug.write( "\n\n" )
+    if complexity < db_comp_comp:
+      thoroughness = args.thoroughness
+      yield hint, 1
+    else:
+      thoroughness -= 1
+      yield hint, 0
+      if thoroughness < 0: break
+    hint = db_measure.hint_init( sample, hint )
 
 
 if __name__ == "__main__":
+  try:
+    for run, ( hint, keep ) in enumerate( hints() ):
+      print( "Hyperinterval {}:".format( run ), hint,
+             "KEPT" if keep else "DISCARDED" )
+  except KeyboardInterrupt:
+    print( "Interrupted" )
   # If the volume is normalized to 1, the following prints 0.
   # This is not a bug.
-  print( "Single uniform complexity:                   ",
+  print( "Single uniform complexity:            ",
          len( db ) * log( db_volume ) )
-  """Discretization is completely ignored.
-     Partly this can be justified (log(dx) is model independent).
-     The cost of specifying the luckiness region is also ignored.
-     This can hardly be justified.
-     For now: just add a constant C for all this ;-)."""
-  # Taking into account model selection cost
-  #print( "Comparative single uniform sample complexity:",
-  #       len( sample ) * log( db_volume / len( sample ) ) )
-  print( "Comparative single uniform complexity:       ",
+  print( "Comparative single uniform complexity:",
          len( db ) * log( db_volume / len( db ) ) )
-  run()
 
