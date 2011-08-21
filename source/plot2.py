@@ -42,7 +42,7 @@ for i, ( inside, outside ) in enumerate( map( eval, fh.readlines() ) ):
   #cmap=cm.cool
   m.scatter(x,y,s=7,c='r',marker="o",alpha=1)
 
-  filename = 'map{}'.format( i )
+  filename = "map{}".format( i )
+  savefig(filename,dpi=150,bbox_inches='tight')
   print( filename )
-  savefig(filename,dpi=200)
   clf()

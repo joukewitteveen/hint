@@ -95,12 +95,13 @@ def grow_hint( hint, sample ):
 
 ### ENTRANCE HOOKS ###
 
-def hints():
+def hints( sample = sample ):
   global db_volume
   db_volume = db_measure.volume( *db_measure.measure_init( db, sample ) )
   if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
   db_comp_comp = len( db ) * log( db_volume / len( db ) ) \
-                 - ( 2 * log( len( db ) ) - log( 2 ) )
+                 - ( 2 * log( db_volume ) - log( 2 )
+                     - 2 * log( db_measure.discretization_constant ) )
   hint = db_measure.hint_init( sample )
   thoroughness = args.thoroughness
   while hint:
@@ -108,25 +109,28 @@ def hints():
     if debug: debug.write( "\n\n" )
     if complexity < db_comp_comp:
       thoroughness = args.thoroughness
-      yield hint, 1
+      yield hint, complexity, 1
     else:
       thoroughness -= 1
-      yield hint, 0
+      yield hint, complexity, 0
       if thoroughness < 0: break
     hint = db_measure.hint_init( sample, hint )
 
 
 if __name__ == "__main__":
   try:
-    for run, ( hint, keep ) in enumerate( hints() ):
-      print( "Hyperinterval {}:".format( run ), hint,
+    for run, ( hint, complexity, keep ) in enumerate( hints() ):
+      print( "Hyperinterval {}:".format( run ), hint, complexity,
              "KEPT" if keep else "DISCARDED" )
   except KeyboardInterrupt:
     print( "Interrupted" )
   # If the volume is normalized to 1, the following prints 0.
   # This is not a bug.
-  print( "Single uniform complexity:            ",
+  print( "Single uniform data complexity:             ",
          len( db ) * log( db_volume ) )
-  print( "Comparative single uniform complexity:",
+  print( "Comparative single uniform data complexity: ",
          len( db ) * log( db_volume / len( db ) ) )
+  print( "Discretized double uniform model complexity:",
+         2 * log( db_volume ) - log( 2 )
+         - 2 * log( db_measure.discretization_constant ) )
 

@@ -12,7 +12,7 @@ fh = open( 'py2to3', 'w' )
 keys = []
 for _ in hint.db: keys.append( tuple( map( float, input().split() ) ) )
 
-for hinterval, keep in hint.hints():
+for hinterval, complexity, keep in hint.hints():
   print( "Found:", hinterval, "KEPT" if keep else "DISCARDED" )
   if not keep: continue
   inside = []

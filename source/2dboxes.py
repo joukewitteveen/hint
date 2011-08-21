@@ -11,7 +11,7 @@ import hint
 fh = open( '2dboxes', 'w' )
 judgement = [ [], [] ]
 
-for hinterval, keep in hint.hints():
+for hinterval, complexity, keep in hint.hints():
   xdelta, ydelta = map( lambda a, b: ( b - a ) / 2, *hinterval )
   x = hinterval[0][0] + xdelta
   y = hinterval[0][1] + ydelta

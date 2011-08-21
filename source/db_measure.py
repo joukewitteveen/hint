@@ -9,13 +9,16 @@ This file is part of Hint, the hyperinterval finder.
 import hint_tools
 from sys import float_info
 
+discretization_constant = None
+
 
 def measure_init( db, sample ):
   """Establish a bounding box around the database and normalizing factors for
      all columns, so that distances become comparable."""
-  global db_scale
+  global db_scale, discretization_constant
   db_lb, db_ub = hint_tools.bounding_hint( *db )
   db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
+  discretization_constant = 1 / len( db )
   volume.epsilon = float_info.epsilon**( 1 / len( db_scale ) )
   # Runtime is quadratic in the sample size. That is slow.
   hint_init.candidates = sorted( [ ( a, b ) for a in sample for b in sample
