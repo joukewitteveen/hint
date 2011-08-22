@@ -47,7 +47,7 @@ def volume( a, b ):
   return max( V, float_info.min )
 
 
-def hint_init( sample, *exclude ):
+def hint_init( *exclude ):
   """The hyperinterval is initialized as the region between the two sampled
      points that are closest together.
 

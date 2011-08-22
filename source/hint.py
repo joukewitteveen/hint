@@ -102,7 +102,7 @@ def hints( sample = sample ):
   db_comp_comp = len( db ) * log( db_volume / len( db ) ) \
                  - ( 2 * log( db_volume ) - log( 2 )
                      - 2 * log( db_measure.discretization_constant ) )
-  hint = db_measure.hint_init( sample )
+  hint = db_measure.hint_init()
   thoroughness = args.thoroughness
   while hint:
     hint, complexity = grow_hint( hint, sample )
@@ -114,7 +114,7 @@ def hints( sample = sample ):
       thoroughness -= 1
       yield hint, complexity, 0
       if thoroughness < 0: break
-    hint = db_measure.hint_init( sample, hint )
+    hint = db_measure.hint_init( hint )
 
 
 if __name__ == "__main__":
