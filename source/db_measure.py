@@ -18,8 +18,8 @@ def measure_init( db, sample ):
   global db_scale, discretization_constant
   db_lb, db_ub = hint_tools.bounding_hint( *db )
   db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
-  discretization_constant = 1 / len( db )
-  volume.epsilon = float_info.epsilon**( 1 / len( db_scale ) )
+  discretization_constant = len( db_scale ) * hint_tools.log( len( db ) )
+  volume.epsilon = float_info.epsilon ** ( 1 / len( db_scale ) )
   # Runtime is quadratic in the sample size. That is slow.
   hint_init.candidates = sorted( [ ( a, b ) for a in sample for b in sample
                                                             if not a is b ],

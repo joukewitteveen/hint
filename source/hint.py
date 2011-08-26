@@ -8,8 +8,6 @@ Finds hyperintervals in a (numerical) database that have high density.
 
 import argparse, random
 import hint_tools
-# Units are nats when using natural logarithms
-from math import log
 # Customize the database measure by
 #   import <custom_db_measure> as db_measure
 # before importing this file
@@ -17,6 +15,8 @@ try:
   from __main__ import db_measure
 except ImportError:
   import db_measure
+
+log = hint_tools.log
 
 
 ### ARGUMENT PARSING AND VALIDATION ###
@@ -100,8 +100,8 @@ def hints( sample = sample ):
   db_volume = db_measure.volume( *db_measure.measure_init( db, sample ) )
   if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
   db_comp_comp = len( db ) * log( db_volume / len( db ) ) \
-                 - ( 2 * log( db_volume ) - log( 2 )
-                     - 2 * log( db_measure.discretization_constant ) )
+                 - ( 2 * log( db_volume ) - len( db[0] ) * log( 2 )
+                     + 2 * db_measure.discretization_constant )
   hint = db_measure.hint_init()
   thoroughness = args.thoroughness
   while hint:
@@ -131,6 +131,6 @@ if __name__ == "__main__":
   print( "Comparative single uniform data complexity: ",
          len( db ) * log( db_volume / len( db ) ) )
   print( "Discretized double uniform model complexity:",
-         2 * log( db_volume ) - log( 2 )
-         - 2 * log( db_measure.discretization_constant ) )
+         2 * log( db_volume ) - len( db[0] ) * log( 2 )
+         + 2 * db_measure.discretization_constant )
 
