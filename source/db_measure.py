@@ -64,3 +64,9 @@ def hint_init( *exclude ):
                             *hint_init.candidates[0] ) )
   return hint_tools.bounding_hint( *hint_init.candidates[0] )
 
+
+def fullness( hint ):
+  """Coverage per dimension"""
+  return [ ( hint[1][i] - hint[0][i] ) / scale
+           for i, scale in enumerate( db_scale ) ]
+

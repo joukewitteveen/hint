@@ -16,34 +16,52 @@ try:
 except ImportError:
   import db_measure
 
+# logarithmic function
 log = hint_tools.log
+
+db = None
+sample = None
+debug = None
+params = {}
 
 
 ### ARGUMENT PARSING AND VALIDATION ###
 
-parser = argparse.ArgumentParser( description = "Hyperinterval finder." )
-parser.add_argument( '-s', '--sample', metavar = 'SIZE', type = int,
-  required = True, help = "sample size to determine hyperinterval boundaries" )
-parser.add_argument( 'database', type = argparse.FileType( 'r' ),
-  help = "database file containing one line per entry" )
-parser.add_argument( '-p', '--perseverance', type = int, default = 0,
-  help = "eagerness to not end up in local minima" )
-parser.add_argument( '-t', '--thoroughness', type = int, default = 0,
-  help = "tolerated consecutive non-compressing hyperintervals" )
-parser.add_argument( '-l', '--log', metavar = 'FILE',
-  type = argparse.FileType( 'w' ), required = False,
-  help = "log file to record all considered hyperintervals" )
-args = parser.parse_args()
+def cli_args( *argv ):
+  """Command line interface arguments"""
+  global db, sample, debug
+  parser = argparse.ArgumentParser( description = "Hyperinterval finder." )
+  parser.add_argument( '-s', '--sample', metavar = 'SIZE',
+    type = int, required = True,
+    help = "sample size to determine hyperinterval boundaries" )
+  parser.add_argument( 'database', type = argparse.FileType( 'r' ),
+    help = "database file containing one line per entry" )
+  parser.add_argument( '-p', '--perseverance', type = int, default = 0,
+    help = "eagerness to not end up in local minima" )
+  parser.add_argument( '-pc', '--thoroughness', type = int, default = 0,
+    help = "tolerated consecutive non-compressing hyperintervals" )
+  parser.add_argument( '-pd', '--dim-thoroughness', metavar = 'DIM_THOROUGH',
+    type = int, default = -1,
+    help = "tolerated consecutive non-discardable dimensions" )
+  parser.add_argument( '-l', '--log', metavar = 'FILE',
+    type = argparse.FileType( 'w' ), required = False,
+    help = "log file to record all considered hyperintervals" )
+  args = parser.parse_args( *argv )
 
-db = tuple( tuple( map( float, row.split() ) ) for row in args.database )
-if not ( 3 <= args.sample <= len( db ) ):
-  parser.error( "SIZE should be between 3 and the size of the database." )
-if not ( 0 <= args.perseverance <= args.sample - 3 ):
-  parser.error( "PERSEVERANCE should be between 0 and SIZE-3." )
-if args.thoroughness < 0:
-  parser.error( "THOROUGHNESS should not be negative." )
-sample = random.sample( db, args.sample )
-debug = args.log
+  db = tuple( tuple( map( float, row.split() ) ) for row in args.database )
+  if not ( 3 <= args.sample <= len( db ) ):
+    parser.error( "SIZE should be between 3 and the size of the database." )
+  if not ( 0 <= args.perseverance <= args.sample - 3 ):
+    parser.error( "PERSEVERANCE should be between 0 and SIZE-3." )
+  if args.thoroughness < 0:
+    parser.error( "THOROUGHNESS should not be negative." )
+  if not ( -1 <= args.dim_thoroughness < len( db[0] ) ):
+    parser.error( "DIM_THOROUGH should be between -1 and dimensionality-1." )
+  sample = random.sample( db, args.sample )
+  debug = args.log
+  params['perseverance'] = args.perseverance
+  params['thoroughness'] = args.thoroughness
+  params['dim_thorough'] = args.dim_thoroughness
 
 
 ### COMPLEXITY RELATED MACHINERY ###
@@ -65,25 +83,26 @@ def comp_hint_comp( hint ):
   return complexity
 
 
-# BUG: The boundaries are often found in low density regions. The sample is not
-#      the most accurate source of coordinates in those situations.
+# SHORTCOMING: The boundaries are often found in low density regions.
+#              The sample is not the most accurate source of coordinates in
+#              those situations.
 def grow_hint( hint, sample ):
   """Grow the hyperinterval to its maximal informativeness."""
   complexity = comp_hint_comp( hint )
   sample_out = [ row for row in sample
                      if not hint_tools.is_covered( row, hint ) ]
-  perseverance = args.perseverance
+  perseverance = params['perseverance']
   while sample_out:
     candidate = sample_out.pop(
       min( range( len( sample_out ) ),
            key = lambda i: db_measure.distance( sample_out[i], hint[0] )
                            + db_measure.distance( sample_out[i], hint[1] ) ) )
-    hint_candidate = tuple( map( min, candidate, hint[0] ) ), \
+    candidate_hint = tuple( map( min, candidate, hint[0] ) ), \
                      tuple( map( max, candidate, hint[1] ) )
-    complexity_candidate = comp_hint_comp( hint_candidate )
-    if complexity_candidate < complexity:
-      complexity, hint = complexity_candidate, hint_candidate
-      perseverance = args.perseverance
+    candidate_comp = comp_hint_comp( candidate_hint )
+    if candidate_comp < complexity:
+      hint, complexity = candidate_hint, candidate_comp
+      perseverance = params['perseverance']
     else:
       perseverance -= 1
       if perseverance < 0: break
@@ -95,31 +114,61 @@ def grow_hint( hint, sample ):
 
 ### ENTRANCE HOOKS ###
 
-def hints( sample = sample ):
-  global db_volume
-  db_volume = db_measure.volume( *db_measure.measure_init( db, sample ) )
+def hints():
+  """Generate all compressing hyperintervals."""
+  global db_bound, db_volume, model_comp, db_base_comp
+  db_bound = db_measure.measure_init( db, sample )
+  db_volume = db_measure.volume( *db_bound )
+  model_comp = 2 * log( db_volume ) - len( db[0] ) * log( 2 ) \
+               + 2 * db_measure.discretization_constant
+  db_base_comp = len( db ) * log( db_volume / len( db ) )
   if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
-  db_comp_comp = len( db ) * log( db_volume / len( db ) ) \
-                 - ( 2 * log( db_volume ) - len( db[0] ) * log( 2 )
-                     + 2 * db_measure.discretization_constant )
+  thoroughness = params['thoroughness']
   hint = db_measure.hint_init()
-  thoroughness = args.thoroughness
   while hint:
     hint, complexity = grow_hint( hint, sample )
     if debug: debug.write( "\n\n" )
-    if complexity < db_comp_comp:
-      thoroughness = args.thoroughness
-      yield hint, complexity, 1
+    if complexity < db_base_comp - model_comp:
+      thoroughness = params['thoroughness']
+      yield hint, complexity, True
     else:
       thoroughness -= 1
-      yield hint, complexity, 0
+      yield hint, complexity, False
       if thoroughness < 0: break
     hint = db_measure.hint_init( hint )
 
 
+def prune( hint, complexity ):
+  """Post-process a hyperinterval by pruning superfluous (full) dimensions."""
+  dimensions = len( db[0] )
+  dim_comp = model_comp / dimensions
+  zbound = list( zip( *db_bound ) )
+  zhint = list( zip( *hint ) )
+  fullness = db_measure.fullness( hint )
+  thoroughness = params['dim_thorough']
+  for i in sorted( range( len( hint ) ), key = lambda i: fullness[i],
+                   reverse = True ):
+    zcandidate = zhint[:i] + zbound[i:i + 1] + zhint[i + 1:]
+    candidate_comp = comp_hint_comp( tuple( zip( *zcandidate ) ) )
+    if candidate_comp <= complexity + dim_comp:
+      zhint, complexity = zcandidate, candidate_comp
+      dimensions -= 1
+      thoroughness = params['dim_thorough']
+    else:
+      thoroughness -= 1
+      if thoroughness < 0: break
+  zhint = [ zhint[i] if zhint[i] != zbound[i] else ( None, None )
+            for i in range( len( zhint ) ) ]
+  return tuple( zip( *zhint ) ), complexity, \
+         complexity < db_base_comp - dimensions * dim_comp
+
+
 if __name__ == "__main__":
+  cli_args()
   try:
     for run, ( hint, complexity, keep ) in enumerate( hints() ):
+      if params['dim_thorough'] >= 0:
+        hint, complexity, keep = prune( hint, complexity )
       print( "Hyperinterval {}:".format( run ), hint, complexity,
              "KEPT" if keep else "DISCARDED" )
   except KeyboardInterrupt:
@@ -128,9 +177,6 @@ if __name__ == "__main__":
   # This is not a bug.
   print( "Single uniform data complexity:             ",
          len( db ) * log( db_volume ) )
-  print( "Comparative single uniform data complexity: ",
-         len( db ) * log( db_volume / len( db ) ) )
-  print( "Discretized double uniform model complexity:",
-         2 * log( db_volume ) - len( db[0] ) * log( 2 )
-         + 2 * db_measure.discretization_constant )
+  print( "Comparative single uniform data complexity: ", db_base_comp )
+  print( "Discretized double uniform model complexity:", model_comp )
 
