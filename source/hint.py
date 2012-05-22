@@ -57,7 +57,7 @@ def cli_args( *argv ):
     parser.error( "THOROUGHNESS should not be negative." )
   if not ( -1 <= args.dim_thoroughness < len( db[0] ) ):
     parser.error( "DIM_THOROUGH should be between -1 and dimensionality-1." )
-  sample = random.sample( db, args.sample )
+  sample = tuple( random.sample( range( len( db ) ), args.sample ) )
   debug = args.log
   params['perseverance'] = args.perseverance
   params['thoroughness'] = args.thoroughness
@@ -89,14 +89,13 @@ def comp_hint_comp( hint ):
 def grow_hint( hint, sample ):
   """Grow the hyperinterval to its maximal informativeness."""
   complexity = comp_hint_comp( hint )
-  sample_out = [ row for row in sample
-                     if not hint_tools.is_covered( row, hint ) ]
+  sample_out = [ i for i in sample
+                   if not hint_tools.is_covered( db[i], hint ) ]
   perseverance = params['perseverance']
   while sample_out:
-    candidate = sample_out.pop(
-      min( range( len( sample_out ) ),
-           key = lambda i: db_measure.distance( sample_out[i], hint[0] )
-                           + db_measure.distance( sample_out[i], hint[1] ) ) )
+    candidate = db[sample_out.pop( min( range( len( sample_out ) ), key = \
+      lambda i: db_measure.distance( db[sample_out[i]], hint[0] ) \
+                + db_measure.distance( db[sample_out[i]], hint[1] ) ) )]
     candidate_hint = tuple( map( min, candidate, hint[0] ) ), \
                      tuple( map( max, candidate, hint[1] ) )
     candidate_comp = comp_hint_comp( candidate_hint )
@@ -120,7 +119,7 @@ def hints():
   db_bound = db_measure.measure_init( db, sample )
   db_volume = db_measure.volume( *db_bound )
   model_comp = 2 * log( db_volume ) - len( db[0] ) * log( 2 ) \
-               + 2 * db_measure.discretization_constant
+               + 2 * db_measure.discretization_const
   db_base_comp = len( db ) * log( db_volume / len( db ) )
   if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
   thoroughness = params['thoroughness']

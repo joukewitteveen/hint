@@ -15,13 +15,11 @@ def bounding_hint( *a ):
   return tuple( map( min, *a ) ), tuple( map( max, *a ) )
 
 
-def is_covered( a, *hints ):
-  """Checks whether any of the hyperintervals provided cover point a."""
-  for hint in hints:
-    for i, x in enumerate( a ):
-      if not ( hint[0][i] <= x <= hint[1][i] ): break
-    else: return True
-  return False
+def is_covered( a, hint ):
+  """Whether record a is covered by the hyperinterval."""
+  for i, x in enumerate( a ):
+    if not ( hint[0][i] <= x <= hint[1][i] ): return False
+  return True
 
 
 def covered( hint, db ):
