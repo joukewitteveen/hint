@@ -3,7 +3,7 @@
 General purpose measures on numerical databases of arbitrary dimension.
 This file is part of Hint, the hyperinterval finder.
 
-(c) 2011 Jouke Witteveen
+(c) 2011-2012 Jouke Witteveen
 """
 
 import hint_tools
@@ -15,7 +15,8 @@ discretization_const = None
 def measure_init( _db, sample ):
   """Establish a bounding box around the database and normalizing factors for
      all columns, so that distances become comparable."""
-  global db, db_scale, discretization_const
+  global db, db_scale, discretization_const, distance1d
+  def distance1d( x, y, z ): return abs( ( x - y ) / z )
   db = _db
   db_lb, db_ub = hint_tools.bounding_hint( *db )
   db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
@@ -32,7 +33,7 @@ def measure_init( _db, sample ):
 def distance( a, b ):
   """The distance between two database records."""
   # A rectilinear distance suits the model
-  return sum( map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ) )
+  return sum( map( distance1d, a, b, db_scale ) )
 
 
 def volume( a, b ):
@@ -44,7 +45,7 @@ def volume( a, b ):
      The volume of the bounding box around the database is normalized to 1."""
   if a is b: return 0
   V = 1
-  for side in map( lambda x, y, z: abs( ( x - y ) / z ), a, b, db_scale ):
+  for side in map( distance1d, a, b, db_scale ):
     V *= ( side or volume.epsilon )
   return max( V, float_info.min )
 
@@ -54,7 +55,6 @@ def hint_init( exclude = None ):
      points that are closest together.
 
      Points in an excluded interval are not considered."""
-  global hint_origin
   if exclude:
     hint_init.queue = [ ( i, j )
                         for i, j in hint_init.queue
@@ -63,9 +63,8 @@ def hint_init( exclude = None ):
   if len( hint_init.queue ) == 0:
     print( "Sample exhausted." )
     return None
-  a, b = db[hint_init.queue[0][0]], db[hint_init.queue[0][1]]
-  hint_origin = tuple( map( lambda x, y: ( x + y ) / 2, a, b ) )
-  return hint_tools.bounding_hint( a, b )
+  return hint_tools.bounding_hint( db[hint_init.queue[0][0]],
+                                   db[hint_init.queue[0][1]] )
 
 
 def fullness( hint ):

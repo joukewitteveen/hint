@@ -3,7 +3,7 @@
 
 Finds hyperintervals in a (numerical) database that have high density.
 
-(c) 2011 Jouke Witteveen
+(c) 2011-2012 Jouke Witteveen
 """
 
 import argparse, random
@@ -70,15 +70,15 @@ def comp_hint_comp( hint ):
   """Comparative hint complexity calculation."""
   inside_count = hint_tools.covered( hint, db )
   outside_count = len( db ) - inside_count
-  hint_volume = db_measure.volume( hint[0], hint[1] )
-  complexity = inside_count * log( hint_volume / inside_count )
+  hint_volume = db_measure.volume( *hint )
+  complexity = inside_count * ( log( hint_volume ) - log( inside_count ) )
   if outside_count != 0:
-    complexity += \
-      outside_count * log( ( db_volume - hint_volume ) / outside_count )
+    complexity += outside_count \
+                  * ( log( db_volume - hint_volume ) - log( outside_count ) )
   if debug:
     debug.write( "{}\t{}\t{}\t{}\t{}\n".format(
-      -db_measure.distance( hint[0], db_measure.hint_origin ),
-      db_measure.distance( hint[1], db_measure.hint_origin ),
+      -db_measure.distance( hint[0], hint_origin ),
+      db_measure.distance( hint[1], hint_origin ),
       hint_volume, inside_count / len( db ), complexity ) )
   return complexity
 
@@ -115,16 +115,17 @@ def grow_hint( hint, sample ):
 
 def hints():
   """Generate all compressing hyperintervals."""
-  global db_bound, db_volume, model_comp, db_base_comp
+  global db_bound, db_volume, db_base_comp, model_comp, hint_origin
   db_bound = db_measure.measure_init( db, sample )
   db_volume = db_measure.volume( *db_bound )
+  db_base_comp = len( db ) * ( log( db_volume ) - log( len( db ) ) )
   model_comp = 2 * log( db_volume ) - len( db[0] ) * log( 2 ) \
                + 2 * db_measure.discretization_const
-  db_base_comp = len( db ) * log( db_volume / len( db ) )
   if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
   thoroughness = params['thoroughness']
   hint = db_measure.hint_init()
   while hint:
+    if debug: hint_origin = tuple( map( lambda x, y: ( x + y ) / 2, *hint ) )
     hint, complexity = grow_hint( hint, sample )
     if debug: debug.write( "\n\n" )
     if complexity < db_base_comp - model_comp:

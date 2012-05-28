@@ -3,7 +3,7 @@
 General purpose hyperinterval tools.
 This file is part of Hint, the hyperinterval finder.
 
-(c) 2011 Jouke Witteveen
+(c) 2011-2012 Jouke Witteveen
 """
 
 # Units are nats when using natural logarithms
@@ -17,9 +17,7 @@ def bounding_hint( *a ):
 
 def is_covered( a, hint ):
   """Whether record a is covered by the hyperinterval."""
-  for i, x in enumerate( a ):
-    if not ( hint[0][i] <= x <= hint[1][i] ): return False
-  return True
+  return all( hint[0][i] <= x <= hint[1][i] for i, x in enumerate( a ) )
 
 
 def covered( hint, db ):
