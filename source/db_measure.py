@@ -12,21 +12,15 @@ from sys import float_info
 discretization_const = None
 
 
-def measure_init( _db, sample ):
+def measure_init( db ):
   """Establish a bounding box around the database and normalizing factors for
      all columns, so that distances become comparable."""
-  global db, db_scale, discretization_const, distance1d
+  global db_scale, discretization_const, distance1d
   def distance1d( x, y, z ): return abs( ( x - y ) / z )
-  db = _db
   db_lb, db_ub = hint_tools.bounding_hint( *db )
   db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
   discretization_const = len( db_scale ) * hint_tools.log( len( db ) )
   volume.epsilon = float_info.epsilon ** ( 1 / len( db_scale ) )
-  # Runtime is quadratic in the sample size. That is slow.
-  hint_init.queue = sorted( [ ( sample[i], sample[j] )
-                              for i in range( len( sample ) )
-                              for j in range( i ) ],
-                            key = lambda ij: distance( db[ij[0]], db[ij[1]] ) )
   return db_lb, db_ub
 
 
@@ -48,23 +42,6 @@ def volume( a, b ):
   for side in map( distance1d, a, b, db_scale ):
     V *= ( side or volume.epsilon )
   return max( V, float_info.min )
-
-
-def hint_init( exclude = None ):
-  """The hyperinterval is initialized as the region between the two sampled
-     points that are closest together.
-
-     Points in an excluded interval are not considered."""
-  if exclude:
-    hint_init.queue = [ ( i, j )
-                        for i, j in hint_init.queue
-                        if not hint_tools.is_covered( db[i], exclude )
-                           and not hint_tools.is_covered( db[j], exclude ) ]
-  if len( hint_init.queue ) == 0:
-    print( "Sample exhausted." )
-    return None
-  return hint_tools.bounding_hint( db[hint_init.queue[0][0]],
-                                   db[hint_init.queue[0][1]] )
 
 
 def fullness( hint ):

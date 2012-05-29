@@ -27,3 +27,29 @@ def covered( hint, db ):
     if is_covered( row, hint ): count += 1
   return count
 
+
+def queue_init( db, sample, key ):
+  """Initialize the internal queue of next_hint."""
+  # Runtime is quadratic in the sample size. That is slow.
+  def _key( ij ): return key( db[ij[0]], db[ij[1]] )
+  next_hint.db = db
+  next_hint.queue = sorted( [ ( sample[i], sample[j] )
+                              for i in range( len( sample ) )
+                              for j in range( i ) ], key = _key )
+
+
+def next_hint( exclude = None ):
+  """The next hyperinterval to expand.
+
+     Points in an excluded interval are not considered."""
+  if exclude:
+    next_hint.queue = [ ( i, j )
+                        for i, j in next_hint.queue
+                        if not is_covered( next_hint.db[i], exclude )
+                           and not is_covered( next_hint.db[j], exclude ) ]
+  if len( next_hint.queue ) == 0:
+    print( "Sample exhausted." )
+    return None
+  return bounding_hint( next_hint.db[next_hint.queue[0][0]],
+                        next_hint.db[next_hint.queue[0][1]] )
+
