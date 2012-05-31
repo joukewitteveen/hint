@@ -7,9 +7,9 @@ This file is part of Hint, the hyperinterval finder.
 """
 
 import operator
-import hint_tools
+from hint_tools import log
 
-discretization_const = 0
+discretization_const = None
 
 
 def hint_key( a, b ):
@@ -17,6 +17,8 @@ def hint_key( a, b ):
 
 
 def measure_init( db ):
+  global discretization_const
+  discretization_const = len( db[0] ) * ( log( 6 ) / 2 - log( 2 ) )
   return ( 0, ) * len( db[0] ), ( 1, ) * len( db[0] )
 
 
@@ -33,6 +35,6 @@ def volume( a, b ):
 
 
 def fullness( hint ):
-  """Coverage per dimension"""
+  """Coverage per dimension."""
   return list( map( float, map( operator.ne, hint[0], hint[1] ) ) )
 

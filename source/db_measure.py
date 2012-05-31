@@ -45,7 +45,7 @@ def volume( a, b ):
 
 
 def fullness( hint ):
-  """Coverage per dimension"""
+  """Coverage per dimension."""
   return [ ( hint[1][i] - hint[0][i] ) / scale
            for i, scale in enumerate( db_scale ) ]
 
