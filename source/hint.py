@@ -121,10 +121,7 @@ def hints():
   db_base_comp = len( db ) * ( log( db_volume ) - log( len( db ) ) )
   model_comp = 2 * log( db_volume ) - len( db[0] ) * log( 2 ) \
                + 2 * db_measure.discretization_const
-  try:
-    hint_tools.queue_init( db, sample, db_measure.hint_key )
-  except AttributeError:
-    hint_tools.queue_init( db, sample, db_measure.distance )
+  hint_tools.queue_init( db, sample, db_measure.distance )
   if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
   thoroughness = params['thoroughness']
   hint = hint_tools.next_hint()

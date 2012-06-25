@@ -6,35 +6,31 @@ This file is part of Hint, the hyperinterval finder.
 (c) 2012 Jouke Witteveen
 """
 
-import operator
 from hint_tools import log
 
 discretization_const = None
 
 
-def hint_key( a, b ):
-  return -sum( map( operator.mul, a, b ) )
-
-
 def measure_init( db ):
-  global discretization_const
+  global discretization_const, lfractions
   discretization_const = len( db[0] ) * ( log( 6 ) / 2 - log( 2 ) )
+  lfractions = tuple( -log( sum( x ) / len( db ) ) for x in zip( *db ) )
   return ( 0, ) * len( db[0] ), ( 1, ) * len( db[0] )
 
 
 def distance( a, b ):
-  """The distance between two database records."""
-  return sum( map( operator.ne, a, b ) )
+  """The correlation distance between two database records."""
+  return sum( ( x != y ) * f for x, y, f in zip( a, b, lfractions ) )
 
 
 def volume( a, b ):
   """The volume of the hyperinterval between two database records.
 
      This is a counting measure."""
-  return 2 ** distance( a, b )
+  return 2 ** sum( x != y for x, y in zip( a, b ) )
 
 
 def fullness( hint ):
   """Coverage per dimension."""
-  return list( map( float, map( operator.ne, hint[0], hint[1] ) ) )
+  return [ 0.0 if x == y else 1.0 for x, y in zip( *hint ) ]
 
