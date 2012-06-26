@@ -147,7 +147,7 @@ def prune( hint, complexity ):
   zhint = list( zip( *hint ) )
   fullness = db_measure.fullness( hint )
   thoroughness = params['dim_thorough']
-  for i in sorted( range( len( hint ) ), key = lambda i: fullness[i],
+  for i in sorted( range( len( hint ) ), key = fullness.__getitem__,
                    reverse = True ):
     zcandidate = zhint[:i] + zbound[i:i + 1] + zhint[i + 1:]
     candidate_comp = comp_hint_comp( tuple( zip( *zcandidate ) ) )

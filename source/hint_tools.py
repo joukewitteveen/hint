@@ -30,7 +30,7 @@ def covered( hint, db ):
 
 def queue_init( db, sample, key ):
   """Initialize the internal queue of next_hint."""
-  # Runtime is quadratic in the sample size. That is slow.
+  # Runtime is in O( len( sample ) ** 2 * log( len( sample ) ) ). That is slow.
   def _key( ij ): return key( db[ij[0]], db[ij[1]] )
   next_hint.db = db
   next_hint.queue = sorted( [ ( sample[i], sample[j] )

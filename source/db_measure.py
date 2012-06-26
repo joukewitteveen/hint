@@ -18,7 +18,7 @@ def measure_init( db ):
   global db_scale, discretization_const, distance1d
   def distance1d( x, y, z ): return abs( ( x - y ) / z )
   db_lb, db_ub = hint_tools.bounding_hint( *db )
-  db_scale = tuple( map( lambda x, y: abs( x - y ), db_lb, db_ub ) )
+  db_scale = tuple( y - x for x, y in zip( db_lb, db_ub ) )
   discretization_const = len( db_scale ) * hint_tools.log( len( db ) )
   volume.epsilon = float_info.epsilon ** ( 1 / len( db_scale ) )
   return db_lb, db_ub
