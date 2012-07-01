@@ -32,5 +32,5 @@ def volume( a, b ):
 
 def fullness( hint ):
   """Coverage per dimension."""
-  return [ 0.0 if x == y else 1.0 for x, y in zip( *hint ) ]
+  return tuple( 0.0 if x == y else 1.0 for x, y in zip( *hint ) )
 
