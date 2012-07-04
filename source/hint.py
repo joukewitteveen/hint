@@ -62,6 +62,7 @@ def cli_args( *argv ):
   params['perseverance'] = args.perseverance
   params['thoroughness'] = args.thoroughness
   params['dim_thorough'] = args.dim_thoroughness
+  if params['dim_thorough'] >= 0: hints.postproc = prune
 
 
 ### COMPLEXITY RELATED MACHINERY ###
@@ -128,15 +129,18 @@ def hints():
   while hint:
     if debug: hint_origin = tuple( map( lambda x, y: ( x + y ) / 2, *hint ) )
     hint, complexity = grow_hint( hint, sample )
-    if debug: debug.write( "\n\n" )
-    if complexity < db_base_comp - model_comp:
+    _hint, complexity, keep = hints.postproc( hint, complexity )
+    yield _hint, complexity, keep
+    if keep:
       thoroughness = params['thoroughness']
-      yield hint, complexity, True
     else:
       thoroughness -= 1
-      yield hint, complexity, False
       if thoroughness < 0: break
+    if debug: debug.write( "\n\n" )
     hint = hint_tools.next_hint( hint )
+
+hints.postproc = lambda hint, complexity: \
+  ( hint, complexity, complexity < db_base_comp - model_comp )
 
 
 def prune( hint, complexity ):
@@ -168,8 +172,6 @@ if __name__ == "__main__":
   cli_args()
   try:
     for run, ( hint, complexity, keep ) in enumerate( hints() ):
-      if params['dim_thorough'] >= 0:
-        hint, complexity, keep = prune( hint, complexity )
       print( "Hyperinterval {}:".format( run ), hint, complexity,
              "KEPT" if keep else "DISCARDED" )
   except KeyboardInterrupt:

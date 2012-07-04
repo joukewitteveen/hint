@@ -8,7 +8,6 @@ words = []
 for _ in hint.db[0]: words.append( input() )
 try:
   for n, ( h, c, k ) in enumerate( hint.hints() ):
-    if hint.params['dim_thorough'] >= 0: h, c, k = hint.prune( h, c )
     if not k: continue
     s = [ int( x ) if x == h[1][i] else None for i, x in enumerate( h[0] ) ]
     print( "Itemset {}:".format( n ), s, c )

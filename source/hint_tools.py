@@ -17,7 +17,8 @@ def bounding_hint( *a ):
 
 def is_covered( a, hint ):
   """Whether record a is covered by the hyperinterval."""
-  return all( hint[0][i] <= x <= hint[1][i] for i, x in enumerate( a ) )
+  return all( hint[0][i] <= x <= hint[1][i] for i, x in enumerate( a )
+                                            if hint[0][i] and hint[1][i] )
 
 
 def covered( hint, db ):
