@@ -12,15 +12,19 @@ discretization_const = None
 
 
 def measure_init( db ):
-  global discretization_const, lfractions
+  global discretization_const, entropies
   discretization_const = len( db[0] ) * ( log( 6 ) / 2 - log( 2 ) )
-  lfractions = tuple( -log( sum( x ) / len( db ) ) for x in zip( *db ) )
+  N = len( db )
+  entropies = tuple( log( N, 2 ) \
+                     - ( n * log( n, 2 ) + ( N - n ) * log( N - n, 2 ) ) / N \
+                     for n in map( sum, zip( *db ) ) )
   return ( 0, ) * len( db[0] ), ( 1, ) * len( db[0] )
 
 
 def distance( a, b ):
-  """The correlation distance between two database records."""
-  return sum( ( x != y ) * f for x, y, f in zip( a, b, lfractions ) )
+  """The description distance between two database records."""
+  return sum( entropies[i] for i, ( x, y ) in enumerate( zip( a, b ) )
+                           if x != y )
 
 
 def volume( a, b ):
