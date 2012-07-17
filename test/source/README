@@ -1,0 +1,3 @@
+Usage:
+
+PYTHONPATH=${PATH}:../../source <script.py> <arguments>

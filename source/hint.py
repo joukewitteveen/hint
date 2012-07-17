@@ -77,9 +77,7 @@ def comp_hint_comp( hint ):
     complexity += outside_count \
                   * ( log( db_volume - hint_volume ) - log( outside_count ) )
   if debug:
-    debug.write( "{}\t{}\t{}\t{}\t{}\n".format(
-      -db_measure.distance( hint[0], hint_origin ),
-      db_measure.distance( hint[1], hint_origin ),
+    debug.write( "{}\t{}\t{}\n".format(
       hint_volume, inside_count / len( db ), complexity ) )
   return complexity
 
@@ -116,18 +114,17 @@ def grow_hint( hint, sample ):
 
 def hints():
   """Generate all compressing hyperintervals."""
-  global db_bound, db_volume, db_base_comp, model_comp, hint_origin
+  global db_bound, db_volume, db_base_comp, model_comp
   db_bound = db_measure.measure_init( db )
   db_volume = db_measure.volume( *db_bound )
   db_base_comp = len( db ) * ( log( db_volume ) - log( len( db ) ) )
   model_comp = 2 * log( db_volume ) - len( db[0] ) * log( 2 ) \
                + 2 * db_measure.discretization_const
   hint_tools.queue_init( db, sample, db_measure.distance )
-  if debug: debug.write( "#left\tright\tsize\tcoverage\tcomplexity\n" )
+  if debug: debug.write( "#size\tcoverage\tcomplexity\n" )
   thoroughness = params['thoroughness']
   hint = hint_tools.next_hint()
   while hint:
-    if debug: hint_origin = tuple( map( lambda x, y: ( x + y ) / 2, *hint ) )
     hint, complexity = grow_hint( hint, sample )
     _hint, complexity, keep = hints.postproc( hint, complexity )
     yield _hint, complexity, keep
