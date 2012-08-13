@@ -9,13 +9,15 @@ This file is part of Hint, the hyperinterval finder.
 from hint_tools import log
 
 
-def measure_init( db ):
+def measure_update( db, sample ):
   global entropies
-  N = len( db )
+  N = len( sample )
+  if N == 0: return False
   entropies = tuple( log( N ) \
                      - ( n * log( n ) + ( N - n ) * log( N - n ) ) / N \
-                     for n in map( sum, zip( *db ) ) )
-  return len( db[0] )
+                     if n > 0 else float( 'inf' ) \
+                     for n in map( sum, zip( *[ db[i] for i in sample ] ) ) )
+  return any( x < float( 'inf' ) for x in entropies )
 
 
 def distance( a, b ):

@@ -66,11 +66,9 @@ def comp_hint_comp( hint ):
   outside_count = len( db ) - inside_count
   hint_lvolume = db_measure.lvolume( hint )
   complexity = inside_count * ( hint_lvolume - log( inside_count ) )
-  #complexity = inside_count * ( hint_lvolume - log( len( db ) / 2 ) )
   if outside_count != 0:
     # We approximate the outside volume.
     complexity += outside_count * ( db_dim - log( outside_count ) )
-    #complexity += outside_count * ( db_dim - log( len( db ) / 2 ) )
   if debug:
     debug.write( "{}\t{}\t{}\n".format(
       hint_lvolume, inside_count / len( db ), complexity ) )
@@ -84,9 +82,10 @@ def grow_hint( hint, sample ):
   """Grow the hyperinterval to its maximal informativeness."""
   complexity = comp_hint_comp( hint )
   sample_out = [ i for i in sample
-                   if not hint_tools.is_covered( db[i], hint ) ]
+                   if any( x and y for x, y in zip( db[i], hint ) )
+                      and not hint_tools.is_covered( db[i], hint ) ]
   perseverance = params['perseverance']
-  while sample_out:
+  while db_measure.measure_update( db, sample_out ):
     candidate = db[sample_out.pop( min( range( len( sample_out ) ), key = \
       lambda i: db_measure.distance( db[sample_out[i]], hint ) ) )]
     candidate_hint = tuple( map( min, candidate, hint ) )
@@ -97,6 +96,10 @@ def grow_hint( hint, sample ):
     else:
       perseverance -= 1
       if perseverance < 0: break
+      #if random.getrandbits( 2 ) == 0:
+      #  hint, complexity = candidate_hint, candidate_comp
+    sample_out = [ i for i in sample_out
+                     if any( x and y for x, y in zip( db[i], hint ) ) ]
   else:
     print( "Sample exhausted. "
            "Try a larger sample, or lower your perseverance." )
@@ -108,9 +111,10 @@ def grow_hint( hint, sample ):
 def hints():
   """Generate all compressing hyperintervals."""
   global db_dim, db_base_comp, model_comp
-  db_dim = db_measure.measure_init( db )
+  db_dim = len( db[0] )
   db_base_comp = len( db ) * ( db_dim - log( len( db ) ) )
   model_comp = db_dim * log( 2 )
+  db_measure.measure_update( db, sample )
   hint_tools.queue_init( db, sample, db_measure.distance )
   if debug: debug.write( "#size\tcoverage\tcomplexity\n" )
   thoroughness = params['thoroughness']

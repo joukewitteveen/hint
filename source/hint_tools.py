@@ -8,7 +8,8 @@ This file is part of Hint, the hyperinterval finder.
 
 # Units are nats when using natural logarithms
 from math import log as _log
-def log( x ): return _log( x, 2 )
+def log( x ):
+  return _log( x, 2 ) if x else float( "inf" )
 
 
 def is_covered( a, hint ):
@@ -21,6 +22,7 @@ def covered( hint, db ):
   count = 0
   for row in db:
     if is_covered( row, hint ): count += 1
+  print( count )
   return count
 
 
