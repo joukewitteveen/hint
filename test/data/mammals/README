@@ -1,0 +1,6 @@
+Two plot scripts wrap around the hint program.
+
+Suggested usage (from hint root):
+
+PYTHONPATH=./source/ ./test/source/mammals.py -s SIZE [-p PERSEVERANCE] [-l FILE] ./test/data/mammals/worldclim51+ < ./test/data/mammals/worldclim1_2
+./test/source/mammals-map.py

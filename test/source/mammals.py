@@ -22,4 +22,4 @@ try:
               for row in hint.db ], sep='\t', file=fh )
 except KeyboardInterrupt:
   print( "Interrupted" )
-print( "Reference complexity:", hint.db_base_comp + hint.model_comp )
+print( "Reference complexity:", hint.db_base_comp - hint.model_comp )
